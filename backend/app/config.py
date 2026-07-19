@@ -18,7 +18,7 @@ class Settings:
     # --- Embeddings (Gemini API, hosted -- not run locally) ---
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")
-    EMBEDDING_DIM: int = 768
+    EMBEDDING_DIM: int = 3072
 
     # --- Chunking ---
     CHUNK_SIZE_CHARS: int = int(os.getenv("CHUNK_SIZE_CHARS", "1000"))

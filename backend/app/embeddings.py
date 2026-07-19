@@ -14,9 +14,13 @@ small HTTP calls instead of loading and running a model in-process. This
 is within the assignment's "free-tier LLM APIs" constraint (Gemini has a
 free embeddings tier), the same way Groq is used for chat.
 
-gemini-embedding-001 defaults to 3072-dim output; we explicitly request
-768 dims (one of Google's recommended reduced sizes) via
-outputDimensionality to keep the FAISS index small and fast.
+gemini-embedding-001's native output is 3072 dimensions. We initially
+tried requesting a truncated 768-dim output via outputDimensionality to
+keep the FAISS index smaller, but the batchEmbedContents endpoint
+returned full 3072-dim vectors regardless, which crashed FAISS with a
+dimension-mismatch assertion. Using the native 3072 dimension everywhere
+avoids depending on that truncation behaving consistently, at the cost
+of a slightly larger (still trivial, for a session-scoped pilot) index.
 """
 import httpx
 import numpy as np
@@ -39,10 +43,7 @@ def _embed_batch(texts: list[str], task_type: str) -> list[list[float]]:
             {
                 "model": f"models/{settings.EMBEDDING_MODEL}",
                 "content": {"parts": [{"text": text}]},
-                "embedContentConfig": {
-                    "taskType": task_type,
-                    "outputDimensionality": settings.EMBEDDING_DIM,
-                },
+                "embedContentConfig": {"taskType": task_type},
             }
             for text in texts
         ]
@@ -71,6 +72,13 @@ def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> np.n
         all_vectors.extend(_embed_batch(batch, task_type))
 
     vectors = np.array(all_vectors, dtype="float32")
+
+    if vectors.shape[1] != settings.EMBEDDING_DIM:
+        raise RuntimeError(
+            f"Gemini returned {vectors.shape[1]}-dim embeddings but EMBEDDING_DIM is "
+            f"configured as {settings.EMBEDDING_DIM}. Update settings.EMBEDDING_DIM to match."
+        )
+
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1e-8
     return (vectors / norms).astype("float32")
