@@ -1,33 +1,76 @@
 """
-Thin wrapper around a local sentence-transformers model.
+Embeddings via Google's Gemini embedding API (gemini-embedding-001), not a
+local model.
 
-Why a local embedding model instead of an API: Groq (our LLM constraint)
-doesn't currently serve an embeddings endpoint, and pulling in a second
-paid provider just for embeddings adds another API key and another
-failure point for a pilot. all-MiniLM-L6-v2 is small (~80MB), runs fine
-on a free-tier CPU instance, and is good enough for this document scale.
+History: this pilot first used sentence-transformers/torch locally, which
+exceeded Render free tier's 512MB RAM ceiling and crashed the container.
+Switching to fastembed (ONNX, no torch) reduced the footprint but a
+large real-world PDF still pushed total memory (FastAPI + onnxruntime +
+model weights + PDF processing, all in one 512MB box) over the limit.
+
+Moving embedding computation to a hosted API removes that memory
+category from the equation almost entirely -- the server now just makes
+small HTTP calls instead of loading and running a model in-process. This
+is within the assignment's "free-tier LLM APIs" constraint (Gemini has a
+free embeddings tier), the same way Groq is used for chat.
+
+gemini-embedding-001 defaults to 3072-dim output; we explicitly request
+768 dims (one of Google's recommended reduced sizes) via
+outputDimensionality to keep the FAISS index small and fast.
 """
+import httpx
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 
-_model: SentenceTransformer | None = None
+GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:batchEmbedContents"
+_BATCH_SIZE = 90  # stay under Gemini's per-request batch limit
 
 
-def get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(settings.EMBEDDING_MODEL)
-    return _model
+def _embed_batch(texts: list[str], task_type: str) -> list[list[float]]:
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not set. Add it to your environment (see .env.example)."
+        )
+
+    url = GEMINI_EMBED_URL.format(model=settings.EMBEDDING_MODEL)
+    payload = {
+        "requests": [
+            {
+                "model": f"models/{settings.EMBEDDING_MODEL}",
+                "content": {"parts": [{"text": text}]},
+                "embedContentConfig": {
+                    "taskType": task_type,
+                    "outputDimensionality": settings.EMBEDDING_DIM,
+                },
+            }
+            for text in texts
+        ]
+    }
+
+    with httpx.Client(timeout=30.0) as client:
+        response = client.post(
+            url,
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+            json=payload,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    return [item["values"] for item in data["embeddings"]]
 
 
-def embed_texts(texts: list[str]) -> np.ndarray:
+def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> np.ndarray:
     """Returns L2-normalized float32 embeddings, shape (n, dim)."""
     if not texts:
         return np.zeros((0, settings.EMBEDDING_DIM), dtype="float32")
-    model = get_model()
-    vectors = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+
+    all_vectors: list[list[float]] = []
+    for i in range(0, len(texts), _BATCH_SIZE):
+        batch = texts[i : i + _BATCH_SIZE]
+        all_vectors.extend(_embed_batch(batch, task_type))
+
+    vectors = np.array(all_vectors, dtype="float32")
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1e-8
     return (vectors / norms).astype("float32")

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Central place for all environment-driven configuration.
 Nothing secret is hardcoded here -- everything comes from the environment,
 which on Render is set via the dashboard's Environment tab and locally via
@@ -15,11 +15,10 @@ class Settings:
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
-    # --- Embeddings ---
-    # Runs locally on CPU via sentence-transformers, so it costs no API
-    # quota and works even if the LLM provider changes later.
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-    EMBEDDING_DIM: int = 384
+    # --- Embeddings (Gemini API, hosted -- not run locally) ---
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")
+    EMBEDDING_DIM: int = 768
 
     # --- Chunking ---
     CHUNK_SIZE_CHARS: int = int(os.getenv("CHUNK_SIZE_CHARS", "1000"))
@@ -42,3 +41,6 @@ if not settings.GROQ_API_KEY:
     # We don't crash on import (so the app can still serve health checks /
     # frontend), but every LLM call will fail fast with a clear message.
     print("WARNING: GROQ_API_KEY is not set. Chat requests will fail until it is.")
+
+if not settings.GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY is not set. Document upload/embedding will fail until it is.")
