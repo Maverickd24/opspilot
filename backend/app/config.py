@@ -1,4 +1,4 @@
-"""
+﻿"""
 Central place for all environment-driven configuration.
 Nothing secret is hardcoded here -- everything comes from the environment,
 which on Render is set via the dashboard's Environment tab and locally via
@@ -18,7 +18,7 @@ class Settings:
     # --- Embeddings ---
     # Runs locally on CPU via sentence-transformers, so it costs no API
     # quota and works even if the LLM provider changes later.
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
     EMBEDDING_DIM: int = 384
 
     # --- Chunking ---

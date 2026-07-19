@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+﻿FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ WORKDIR /app/backend
 
 # Pre-download the embedding model at build time so the first request
 # doesn't pay a cold-start download cost.
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
 
 EXPOSE 8000
 
