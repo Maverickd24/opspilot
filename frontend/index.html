@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpsPilot — Document Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="manifest">
+    <div class="brand">
+      <span class="brand-mark">OP</span>
+      <div class="brand-text">
+        <h1>OpsPilot</h1>
+        <p>Document Intelligence — Pilot</p>
+      </div>
+    </div>
+
+    <div class="manifest-section">
+      <div class="manifest-label">
+        <span>Manifest</span>
+        <span class="manifest-count" id="doc-count">0 loaded</span>
+      </div>
+
+      <label class="uploader" id="uploader">
+        <input type="file" id="file-input" accept="application/pdf" multiple hidden />
+        <span class="uploader-icon">+</span>
+        <span class="uploader-text">Upload PDFs<br><small>up to 5 files · 25MB each</small></span>
+      </label>
+
+      <ul class="doc-list" id="doc-list">
+        <!-- doc items injected here -->
+      </ul>
+      <p class="doc-empty" id="doc-empty">No documents loaded. Upload rate cards, SOPs, contracts, or circulars to begin.</p>
+    </div>
+
+    <div class="manifest-footer">
+      <button id="new-session-btn" class="ghost-btn">Clear session</button>
+      <p class="session-id" id="session-id-display"></p>
+    </div>
+  </aside>
+
+  <main class="log">
+    <header class="log-header">
+      <div>
+        <h2>Ops Log</h2>
+        <p id="status-line">Waiting for documents…</p>
+      </div>
+    </header>
+
+    <div class="log-body" id="log-body">
+      <div class="log-entry system">
+        <div class="stamp">SYSTEM</div>
+        <div class="entry-content">
+          <p>Upload your operational documents on the left — rate cards, SOPs, vendor contracts, compliance circulars — then ask questions here. Every answer is grounded strictly in what you upload, with citations back to the source page.</p>
+        </div>
+      </div>
+    </div>
+
+    <form class="composer" id="composer">
+      <textarea id="message-input" placeholder="Ask about the loaded documents…" rows="1" disabled></textarea>
+      <button type="submit" id="send-btn" disabled>Send</button>
+    </form>
+  </main>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
